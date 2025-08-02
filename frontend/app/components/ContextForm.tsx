@@ -9,6 +9,19 @@ interface UserContext {
   weight: string;
   ethnicity: string;
   concerns: string;
+  // Lifestyle factors
+  smoking: string;
+  alcohol: string;
+  activity: string;
+  sleep: string;
+  // Medical history
+  familyHistory: string;
+  conditions: string;
+  medications: string;
+  // Mental health
+  stress: string;
+  mentalHealth: string;
+  socialSupport: string;
 }
 
 interface ContextFormProps {

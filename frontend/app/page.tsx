@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import WelcomePage from './components/WelcomePage';
 import ContextForm from './components/ContextForm';
 import AssessmentPage from './components/AssessmentPage';
+import { assessmentQuestions, getQuestionById, getNextQuestion, Question } from './data/assessmentQuestions';
 
 interface UserContext {
   age: string;
@@ -14,15 +15,22 @@ interface UserContext {
   weight: string;
   ethnicity: string;
   concerns: string;
+  // Lifestyle factors
+  smoking: string;
+  alcohol: string;
+  activity: string;
+  sleep: string;
+  // Medical history
+  familyHistory: string;
+  conditions: string;
+  medications: string;
+  // Mental health
+  stress: string;
+  mentalHealth: string;
+  socialSupport: string;
 }
 
-interface Question {
-  question: string;
-  question_id: number;
-  total_questions: number;
-  options: string[];
-  message?: string;
-}
+
 
 export default function HealthAssessmentTool() {
   const [currentStep, setCurrentStep] = useState<'welcome' | 'context' | 'assessment'>('welcome');
@@ -32,16 +40,23 @@ export default function HealthAssessmentTool() {
     height: '',
     weight: '',
     ethnicity: '',
-    concerns: ''
+    concerns: '',
+    // Lifestyle factors
+    smoking: '',
+    alcohol: '',
+    activity: '',
+    sleep: '',
+    // Medical history
+    familyHistory: '',
+    conditions: '',
+    medications: '',
+    // Mental health
+    stress: '',
+    mentalHealth: '',
+    socialSupport: ''
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [currentQuestion, setCurrentQuestion] = useState<Question>({
-    question: "How would you rate your current stress level?",
-    question_id: 1,
-    total_questions: 10,
-    options: ["Very Low", "Low", "Moderate", "High", "Very High"],
-    message: "Based on your profile, let's start with understanding your stress levels."
-  });
+  const [currentQuestion, setCurrentQuestion] = useState<Question>(assessmentQuestions[0]);
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -83,28 +98,54 @@ export default function HealthAssessmentTool() {
   };
 
   const handleAnswerSelect = (answer: string) => {
-    // Send answer to backend and get next question
-    fetch('http://127.0.0.1:5000/question', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        question_id: currentQuestion.question_id,
-        answer: answer,
-        user_context: userContext
-      }),
-    }).then((response) => response.json())
-    .then((data) => {
-      console.log('Next question:', data);
-      if (data.question) {
-        setCurrentQuestion(data);
-      } else {
-        // Assessment complete - handle results
-        console.log('Assessment complete:', data);
-      }
-    })
-    .catch((error) => {
-      console.error('Error getting next question:', error);
-    });
+    // Store the answer in userContext based on question category
+    const updatedContext = { ...userContext };
+    
+    // Map answers to userContext fields based on question category
+    switch (currentQuestion.category) {
+      case 'mental_health':
+        if (currentQuestion.question_id === 1) updatedContext.stress = answer;
+        else if (currentQuestion.question_id === 2) updatedContext.mentalHealth = answer;
+        break;
+      case 'lifestyle':
+        if (currentQuestion.question_id === 3) updatedContext.sleep = answer;
+        else if (currentQuestion.question_id === 4) updatedContext.smoking = answer;
+        else if (currentQuestion.question_id === 5) updatedContext.alcohol = answer;
+        else if (currentQuestion.question_id === 6) updatedContext.activity = answer;
+        break;
+      case 'medical_history':
+        if (currentQuestion.question_id === 7) updatedContext.familyHistory = answer;
+        else if (currentQuestion.question_id === 9) updatedContext.conditions = answer;
+        break;
+      case 'social':
+        if (currentQuestion.question_id === 11) updatedContext.socialSupport = answer;
+        break;
+    }
+    
+    setUserContext(updatedContext);
+    
+    // Get next question from our question bank
+    const nextQuestion = getNextQuestion(currentQuestion.question_id);
+    
+    if (nextQuestion) {
+      setCurrentQuestion(nextQuestion);
+    } else {
+      // Assessment complete - send all data to backend for analysis
+      console.log('Assessment complete, sending data for analysis:', updatedContext);
+      
+      fetch('http://127.0.0.1:5000/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedContext),
+      }).then((response) => response.json())
+      .then((data) => {
+        console.log('Analysis results:', data);
+        // Handle results - could show a results page
+      })
+      .catch((error) => {
+        console.error('Error analyzing data:', error);
+      });
+    }
   };
 
   return (

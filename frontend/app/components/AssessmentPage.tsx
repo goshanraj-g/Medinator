@@ -37,6 +37,13 @@ export default function AssessmentPage({ currentQuestion, onAnswerSelect }: Asse
 
         {/* Question */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 mb-8 max-w-2xl border border-gray-700/50">
+                     {currentQuestion.question_id === 1 && (
+             <div className="mb-6 p-4 bg-blue-500/20 border border-blue-400/30 rounded-xl">
+               <p className="text-blue-200 text-sm font-medium">
+                 📋 <strong>Diagnostic Phase:</strong> We'll ask 10 questions to understand your health profile and provide personalized insights.
+               </p>
+             </div>
+           )}
           <h3 className="text-2xl font-bold text-white mb-4">
             Question {currentQuestion.question_id}
           </h3>
@@ -65,10 +72,13 @@ export default function AssessmentPage({ currentQuestion, onAnswerSelect }: Asse
            ))}
          </div>
 
-        {/* Progress indicator */}
-        <div className="mt-8 text-gray-400 text-sm">
-          Question {currentQuestion.question_id} of {currentQuestion.total_questions}
-        </div>
+                 {/* Progress indicator */}
+         <div className="mt-8 text-gray-400 text-sm">
+           <div>
+             <p>Diagnostic Question {currentQuestion.question_id} of 10</p>
+             <p className="text-xs text-gray-500 mt-1">Gathering your health profile...</p>
+           </div>
+         </div>
       </div>
     </motion.div>
   );
