@@ -108,10 +108,10 @@ export default function HealthAssessmentTool() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black font-sans flex flex-col">
       <Header />
 
-      <main className="max-w-4xl mx-auto px-6 py-8 font-sans">
+      <main className="flex-1 max-w-4xl mx-auto px-6 py-8 font-sans">
         {currentStep === 'welcome' && (
           <WelcomePage onStartAssessment={handleStartAssessment} />
         )}

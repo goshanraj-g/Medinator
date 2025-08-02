@@ -43,7 +43,6 @@ export default function WelcomePage({ onStartAssessment }: WelcomePageProps) {
       >
         Start Your Health Assessment
       </motion.button>
-      <div className="p-10"></div>
     </motion.div>
   );
 }
