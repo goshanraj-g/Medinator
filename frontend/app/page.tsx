@@ -14,6 +14,18 @@ export default function HealthAssessmentTool() {
   });
 
   const handleContextSubmit = () => {
+    fetch('http://127.0.0.1:5000/initial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userContext)
+      }).then((response) => response.json())
+      .then((data) => {
+        console.log('Response from backend:', data);
+      })
+      .catch((error) => {
+        console.error('Error fetching data:', error);
+      });
+
     setCurrentStep('assessment');
   };
 

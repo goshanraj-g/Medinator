@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
-
+from flask_cors import CORS
 app = Flask(__name__)
+CORS(app)
 
 
 @app.route('/')
@@ -10,7 +11,7 @@ def home():
 # Example route to handle POST request with JSON data
 
 
-@app.route('/analyze', methods=['POST'])
+@app.route('/initial', methods=['POST'])
 def analyze_data():
   data = request.get_json()
   # Placeholder logic
