@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 # Load the dataset
 load = pd.read_csv("DATA/cleaned_dataset.csv", low_memory=False)
@@ -97,31 +98,57 @@ if available_variables:
     load_clean = load_clean.dropna(how="all")
     print(f"  - Removed {initial_rows - len(load_clean)} rows with all missing values")
 
-    # Fill missing values with appropriate defaults
+    # Special cleaning for physical activity variables
+    pa_variables = ['PAADVREC', 'PAADVOTH', 'PAADVWHO', 'PAADVACV', 'PAADVVIG', 'PAADVVOL']
+    missing_codes = [99996, 99997, 99998, 99999, 96, 97, 98, 99]
+    
+    print(f"\nCleaning physical activity variables:")
+    for col in pa_variables:
+        if col in load_clean.columns:
+            missing_before = load_clean[col].isin(missing_codes).sum()
+            print(f"  - {col}: {missing_before} missing values found")
+            
+            # Replace missing codes with NaN
+            load_clean[col] = load_clean[col].replace(missing_codes, np.nan)
+            
+            # For time-based variables, fill with median
+            if col in ['PAADVREC', 'PAADVOTH', 'PAADVVIG', 'PAADVVOL']:
+                median_val = load_clean[col].median()
+                load_clean[col] = load_clean[col].fillna(median_val)
+                print(f"    Filled with median: {median_val}")
+            
+            # For indicator variables, fill with mode
+            elif col in ['PAADVWHO', 'PAADVACV']:
+                mode_val = load_clean[col].mode().iloc[0] if not load_clean[col].mode().empty else 1
+                load_clean[col] = load_clean[col].fillna(mode_val)
+                print(f"    Filled with mode: {mode_val}")
+
+    # Fill missing values with appropriate defaults for other variables
     # For categorical variables, use mode; for numeric, use median
     for col in load_clean.columns:
-        if load_clean[col].dtype in ["int64", "float64"]:
-            # For numeric columns, fill with median
-            median_val = load_clean[col].median()
-            missing_count = load_clean[col].isna().sum()
-            if missing_count > 0:
-                load_clean[col].fillna(median_val, inplace=True)
-                print(
-                    f"  - Filled {missing_count} missing values in {col} with median ({median_val})"
+        if col not in pa_variables:  # Skip already cleaned PA variables
+            if load_clean[col].dtype in ["int64", "float64"]:
+                # For numeric columns, fill with median
+                median_val = load_clean[col].median()
+                missing_count = load_clean[col].isna().sum()
+                if missing_count > 0:
+                    load_clean[col] = load_clean[col].fillna(median_val)
+                    print(
+                        f"  - Filled {missing_count} missing values in {col} with median ({median_val})"
+                    )
+            else:
+                # For categorical columns, fill with mode
+                mode_val = (
+                    load_clean[col].mode().iloc[0]
+                    if not load_clean[col].mode().empty
+                    else "Unknown"
                 )
-        else:
-            # For categorical columns, fill with mode
-            mode_val = (
-                load_clean[col].mode().iloc[0]
-                if not load_clean[col].mode().empty
-                else "Unknown"
-            )
-            missing_count = load_clean[col].isna().sum()
-            if missing_count > 0:
-                load_clean[col].fillna(mode_val, inplace=True)
-                print(
-                    f"  - Filled {missing_count} missing values in {col} with mode ({mode_val})"
-                )
+                missing_count = load_clean[col].isna().sum()
+                if missing_count > 0:
+                    load_clean[col] = load_clean[col].fillna(mode_val)
+                    print(
+                        f"  - Filled {missing_count} missing values in {col} with mode ({mode_val})"
+                    )
 
     # Save the filtered dataset
     load_clean.to_csv("DATA/filtered_data.csv", index=False)
