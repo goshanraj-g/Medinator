@@ -18,7 +18,7 @@ export default function AssessmentPage({ currentQuestion, onAnswerSelect }: Asse
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="text-center"
+      className="text-center font-sans"
     >
       {/* Akinator-style layout */}
       <div className="flex flex-col items-center">
@@ -26,9 +26,13 @@ export default function AssessmentPage({ currentQuestion, onAnswerSelect }: Asse
         <motion.div
           initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
-          className="w-48 h-48 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full mb-8 flex items-center justify-center shadow-2xl"
+          className="w-48 h-48 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full mb-8 flex items-center justify-center shadow-2xl overflow-hidden"
         >
-          <span className="text-8xl">🤔</span>
+          <img 
+            src="/medinator.png" 
+            alt="Medinator" 
+            className="w-32 h-32 object-contain"
+          />
         </motion.div>
 
         {/* Question */}
@@ -46,20 +50,20 @@ export default function AssessmentPage({ currentQuestion, onAnswerSelect }: Asse
           )}
         </div>
 
-        {/* Answer Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
-          {currentQuestion.options.map((option) => (
-            <motion.button
-              key={option}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onAnswerSelect(option)}
-              className="px-6 py-4 bg-gray-700 text-gray-300 border border-gray-600 rounded-xl hover:bg-gray-600 transition-all text-lg font-medium"
-            >
-              {option}
-            </motion.button>
-          ))}
-        </div>
+                 {/* Answer Buttons */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
+           {currentQuestion.options.map((option) => (
+             <motion.button
+               key={option}
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.98 }}
+               onClick={() => onAnswerSelect(option)}
+               className="px-6 py-4 bg-gray-700 text-gray-300 border border-gray-600 rounded-xl hover:bg-gray-600 hover:border-gray-500 hover:shadow-lg hover:scale-105 transition-all duration-300 ease-out text-lg font-medium"
+             >
+               {option}
+             </motion.button>
+           ))}
+         </div>
 
         {/* Progress indicator */}
         <div className="mt-8 text-gray-400 text-sm">
