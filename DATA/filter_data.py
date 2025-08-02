@@ -1,3 +1,7 @@
+import pandas as pd
+
+load = pd.read_csv("DATA/cleaned_dataset.csv", low_memory=False)
+
 variables = [
     # Demographics & Sociodemographics
     "DHHGAGE",
@@ -20,8 +24,6 @@ variables = [
     # Mental Health & Distress
     "DIS_010",
     "DIS_015",
-    "DIS_020",
-    "DIS_025",
     "DIS_030",
     "DISDVK6",
     "DISDVDSX",
@@ -46,5 +48,11 @@ variables = [
     "SMK_005",
     "CCC_030",
     # Bone Health
-    "CCC_060"
+    "CCC_060",
 ]
+
+
+load_clean = load[variables].copy()
+
+load_clean.to_csv("DATA/filtered_data.csv", index=False)
+print("Filtered data saved to filtered_data.csv")
