@@ -13,7 +13,7 @@ prefixes_to_keep = [
 # Prefixes to exclude (even if they start with a keep prefix)
 exclude_prefixes = ['PAA_015', 'PAA_020',
                     # example prefixes to skip
-                    'PAA_045', 'PAA_050', 'PAA_075', 'PAA_080', 'PAA_105', 'PAA_080']
+                    'PAA_045', 'PAA_050', 'PAA_075', 'PAA_080', 'PAA_105', 'PAA_080', 'PAA_100']
 
 # Step 1: Keep only included prefixes that aren't excluded
 columns_to_keep = [
