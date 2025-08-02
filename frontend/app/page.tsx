@@ -137,29 +137,110 @@ export default function HealthAssessmentTool() {
                   <label className="block text-sm font-medium text-white mb-2">
                     Lifestyle (Select all that apply)
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      'Sedentary', 'Moderately active', 'Very active', 'Athlete',
-                      'Smoker', 'Non-smoker', 'Social drinker', 'Non-drinker'
-                    ].map((lifestyle) => (
-                      <button
-                        key={lifestyle}
-                        onClick={() => {
-                          const current = userContext.lifestyle;
-                          const updated = current.includes(lifestyle)
-                            ? current.replace(lifestyle, '').replace(/,\s*,/g, ',').replace(/^,|,$/g, '')
-                            : current ? `${current}, ${lifestyle}` : lifestyle;
-                          setUserContext({...userContext, lifestyle: updated});
-                        }}
-                        className={`px-4 py-3 rounded-lg border transition-all ${
-                          userContext.lifestyle.includes(lifestyle)
-                            ? 'bg-white text-blue-600 border-white'
-                            : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
-                        }`}
-                      >
-                        {lifestyle}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="space-y-2">
+                      <h4 className="text-white/80 text-sm font-medium">Activity Level:</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { 
+                            label: 'Sedentary', 
+                            description: 'Mostly sitting, < 3,000 steps/day',
+                            icon: '🪑'
+                          },
+                          { 
+                            label: 'Moderately active', 
+                            description: 'Light exercise, 3,000-7,500 steps/day',
+                            icon: '🚶'
+                          },
+                          { 
+                            label: 'Very active', 
+                            description: 'Regular exercise, 7,500-10,000 steps/day',
+                            icon: '🏃'
+                          },
+                          { 
+                            label: 'Athlete', 
+                            description: 'Intense training, > 10,000 steps/day',
+                            icon: '🏆'
+                          }
+                        ].map((option) => (
+                          <button
+                            key={option.label}
+                            onClick={() => {
+                              const current = userContext.lifestyle;
+                              const updated = current.includes(option.label)
+                                ? current.replace(option.label, '').replace(/,\s*,/g, ',').replace(/^,|,$/g, '')
+                                : current ? `${current}, ${option.label}` : option.label;
+                              setUserContext({...userContext, lifestyle: updated});
+                            }}
+                            className={`px-4 py-3 rounded-lg border transition-all text-left ${
+                              userContext.lifestyle.includes(option.label)
+                                ? 'bg-white text-blue-600 border-white'
+                                : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="text-lg">{option.icon}</span>
+                              <div>
+                                <div className="font-medium">{option.label}</div>
+                                <div className="text-xs opacity-80">{option.description}</div>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-white/80 text-sm font-medium">Habits:</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { 
+                            label: 'Smoker', 
+                            description: 'Regular tobacco use',
+                            icon: '🚬'
+                          },
+                          { 
+                            label: 'Non-smoker', 
+                            description: 'No tobacco use',
+                            icon: '✅'
+                          },
+                          { 
+                            label: 'Social drinker', 
+                            description: '1-7 drinks/week',
+                            icon: '🍷'
+                          },
+                          { 
+                            label: 'Non-drinker', 
+                            description: 'No alcohol consumption',
+                            icon: '🚫'
+                          }
+                        ].map((option) => (
+                          <button
+                            key={option.label}
+                            onClick={() => {
+                              const current = userContext.lifestyle;
+                              const updated = current.includes(option.label)
+                                ? current.replace(option.label, '').replace(/,\s*,/g, ',').replace(/^,|,$/g, '')
+                                : current ? `${current}, ${option.label}` : option.label;
+                              setUserContext({...userContext, lifestyle: updated});
+                            }}
+                            className={`px-4 py-3 rounded-lg border transition-all text-left ${
+                              userContext.lifestyle.includes(option.label)
+                                ? 'bg-white text-blue-600 border-white'
+                                : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="text-lg">{option.icon}</span>
+                              <div>
+                                <div className="font-medium">{option.label}</div>
+                                <div className="text-xs opacity-80">{option.description}</div>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
