@@ -122,7 +122,7 @@ export default function HealthAssessmentTool() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black font-sans flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black font-sans flex flex-col overflow-hidden scrollbar-hide">
       <Header />
 
       <main className="flex-1 max-w-4xl mx-auto px-6 py-4 font-sans overflow-hidden">
@@ -133,7 +133,7 @@ export default function HealthAssessmentTool() {
         )}
 
         {currentStep === 'context' && (
-          <div className="h-full overflow-y-auto scrollbar-thin">
+          <div className="h-full overflow-y-auto scrollbar-hide">
             <ContextForm
               userContext={userContext}
               setUserContext={setUserContext}
@@ -154,7 +154,7 @@ export default function HealthAssessmentTool() {
         )}
 
         {currentStep === 'detective' && diagnosisData && (
-          <div className="h-full overflow-y-auto scrollbar-thin">
+          <div className="h-full overflow-y-auto scrollbar-hide">
             <DetectivePage
               diagnosisData={diagnosisData.predictions || diagnosisData.risk_factors}
               userAssessment={diagnosisData.user_assessment || userContext}
@@ -164,7 +164,7 @@ export default function HealthAssessmentTool() {
         )}
 
         {currentStep === 'report' && detectiveReport && (
-          <div className="h-full overflow-y-auto scrollbar-thin">
+          <div className="h-full overflow-y-auto scrollbar-hide">
             <DetectiveReport
               reportData={detectiveReport}
               onRestart={handleRestart}
