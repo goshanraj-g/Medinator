@@ -61,7 +61,7 @@ detective_sessions = {}
 
 # Configure Gemini AI
 try:
-    api_key = os.getenv('GOOGLE_AI_API_KEY') or 'AIzaSyCkNVGS5ow-ClY_oEvyy7mGqjWZuq7dyjM'
+    api_key = os.getenv('GOOGLE_AI_API_KEY')
     genai.configure(api_key=api_key)
     gemini_model = genai.GenerativeModel('gemini-1.5-flash')
     GEMINI_AVAILABLE = True
@@ -144,6 +144,349 @@ You wont stop until they trigger stop, and just keep asking questions until you 
             "analysis": "Unable to provide AI analysis at this time",
             "status": "error"
         }
+
+class HealthDetective:
+    def __init__(self, session_id):
+        self.session_id = session_id
+        self.conversation_history = []
+        self.questions_asked = 0
+        self.current_condition = None
+        self.conditions_investigated = []
+        self.condition_confidence = {}
+        self.initial_diagnosis = None
+        self.user_profile = None
+        self.is_active = True
+        
+    def start_investigation(self, diagnosis_data, user_assessment):
+        """Start the Akinator-style health detective investigation"""
+        self.initial_diagnosis = diagnosis_data
+        self.user_profile = user_assessment
+        
+        # Extract top risk conditions from ML predictions
+        if isinstance(diagnosis_data, dict):
+            # Sort conditions by risk level to prioritize investigation
+            risk_conditions = []
+            for condition, data in diagnosis_data.items():
+                if isinstance(data, dict) and 'risk_probability' in data:
+                    risk_conditions.append((condition, data['risk_probability']))
+                elif isinstance(data, str) and data in ['high', 'moderate', 'low']:
+                    risk_map = {'high': 0.8, 'moderate': 0.5, 'low': 0.2}
+                    risk_conditions.append((condition, risk_map[data]))
+            
+            # Sort by risk probability
+            risk_conditions.sort(key=lambda x: x[1], reverse=True)
+            self.conditions_to_investigate = [cond for cond, _ in risk_conditions]
+            
+            # Ensure we have at least some conditions to investigate
+            if not self.conditions_to_investigate:
+                self.conditions_to_investigate = ['cardiovascular', 'diabetes', 'mental_health', 'respiratory', 'musculoskeletal']
+        else:
+            self.conditions_to_investigate = ['cardiovascular', 'diabetes', 'mental_health', 'respiratory', 'musculoskeletal']
+        
+        # Start with the highest risk condition
+        if self.conditions_to_investigate:
+            self.current_condition = self.conditions_to_investigate[0]
+        else:
+            # Ultimate fallback
+            self.current_condition = 'general_health'
+            self.conditions_to_investigate = ['general_health']
+        
+        return self.ask_next_question()
+    
+    def ask_next_question(self):
+        """Generate the next question using Gemini AI"""
+        if not GEMINI_AVAILABLE:
+            return {"error": "AI detective not available"}
+        
+        try:
+            # Build conversation context
+            conversation_context = "\n".join([
+                f"Q{i+1}: {q['question']}\nA{i+1}: {q['answer']}" 
+                for i, q in enumerate(self.conversation_history[-5:])  # Last 5 Q&As
+            ])
+            
+            prompt = f"""You are a health genie like Akinator who can magically guess people's health patterns! You're playing a fun guessing game.
+
+CURRENT FOCUS: {self.current_condition}
+QUESTIONS ASKED SO FAR: {self.questions_asked}
+AREAS ALREADY EXPLORED: {self.conditions_investigated}
+
+USER BASICS:
+- Age: {self.user_profile.get('age', 'Unknown')}
+- Gender: {self.user_profile.get('gender', 'Unknown')}
+
+RECENT CONVERSATION:
+{conversation_context}
+
+GENIE RULES:
+1. Ask ONE question that will help you confirm if the user has {self.current_condition}
+2. Just ask the question, no extra stuff
+3. Keep questions simple, imagine talking to anyone from teens to grandparents
+4. Focus on everyday experiences, not medical terms
+6. Don't mention medical conditions directly - just ask about how they feel or live
+
+Ask your next  question about {self.current_condition}. Make it simple!
+
+IMPORTANT: End your response with exactly 5 multiple choice options separated by "|" like this:
+Options: Yes, definitely|Sometimes|Rarely|No, never|I'm not sure"""
+
+            response = gemini_model.generate_content(prompt)
+            full_response = response.text.strip()
+            
+            # Parse question and options
+            if "Options:" in full_response:
+                parts = full_response.split("Options:")
+                question = parts[0].strip()
+                options_text = parts[1].strip()
+                options = [opt.strip() for opt in options_text.split("|")]
+            else:
+                question = full_response
+                options = ["Yes, definitely", "Sometimes", "Rarely", "No, never", "I'm not sure"]
+            
+            # Clean up the question
+            if question.startswith('"') and question.endswith('"'):
+                question = question[1:-1]
+            
+            self.questions_asked += 1
+            
+            # Record the current question when asking it
+            question_record = {
+                "question": question,
+                "answer": None,  # Will be filled when user responds
+                "condition": self.current_condition
+            }
+            self.conversation_history.append(question_record)
+            
+            return {
+                "question": question,
+                "options": options,
+                "current_condition": self.current_condition,
+                "questions_asked": self.questions_asked,
+                "session_id": self.session_id,
+                "can_stop": True  # User can always stop after first question
+            }
+            
+        except Exception as e:
+            return {"error": f"Failed to generate question: {str(e)}"}
+    
+    def process_answer(self, answer):
+        """Process user's answer and determine next action"""
+        # Record the conversation
+        if self.conversation_history and len(self.conversation_history) > 0:
+            # Update the last question with the answer
+            self.conversation_history[-1]['answer'] = answer
+        else:
+            # First question
+            self.conversation_history.append({
+                "question": "Initial question",
+                "answer": answer,
+                "condition": self.current_condition
+            })
+        
+        # Check if we should move to next condition
+        condition_questions = [q for q in self.conversation_history if q.get('condition') == self.current_condition]
+        
+        if len(condition_questions) >= 3:  # Asked enough questions about this condition (reduced to 3)
+            return self.assess_condition_and_move_next()
+        else:
+            return self.ask_next_question()
+    
+    def assess_condition_and_move_next(self):
+        """Assess current condition confidence and move to next"""
+        if not GEMINI_AVAILABLE:
+            return {"error": "AI detective not available"}
+        
+        try:
+            # Get conversation about current condition
+            condition_conversation = [q for q in self.conversation_history if q.get('condition') == self.current_condition]
+            conversation_text = "\n".join([
+                f"Q: {q['question']}\nA: {q['answer']}" for q in condition_conversation
+            ])
+            
+            prompt = f"""Based on this conversation about {self.current_condition}, provide a confidence assessment:
+
+CONVERSATION:
+{conversation_text}
+
+INITIAL ML PREDICTION: {self.initial_diagnosis.get(self.current_condition, 'Not specified')}
+
+Provide:
+1. Your confidence percentage (0-100%) that they have risk factors for {self.current_condition}
+2. A brief "Interesting..." style comment like Akinator
+3. Key indicators you found
+
+Format as JSON: {{"confidence": 85, "comment": "Interesting...", "indicators": ["indicator1", "indicator2"]}}"""
+
+            response = gemini_model.generate_content(prompt)
+            
+            try:
+                # Try to parse JSON response
+                assessment = json.loads(response.text.strip())
+            except:
+                # Fallback if JSON parsing fails
+                assessment = {
+                    "confidence": 70,
+                    "comment": "Interesting... I'm seeing some patterns here.",
+                    "indicators": ["Based on your responses"]
+                }
+            
+            # Record assessment
+            self.condition_confidence[self.current_condition] = assessment
+            if self.current_condition not in self.conditions_investigated:
+                self.conditions_investigated.append(self.current_condition)
+            
+            # Move to next condition - cycle through all conditions continuously
+            remaining_conditions = [c for c in self.conditions_to_investigate if c not in self.conditions_investigated]
+            
+            if remaining_conditions:
+                # Move to next uninvestigated condition
+                self.current_condition = remaining_conditions[0]
+            else:
+                # All conditions investigated once, start over with more detailed questions
+                # Reset and go deeper into conditions
+                if self.conditions_to_investigate:
+                    self.current_condition = self.conditions_to_investigate[0]
+                else:
+                    # Fallback conditions if none available
+                    self.conditions_to_investigate = ['cardiovascular', 'diabetes', 'mental_health', 'respiratory', 'musculoskeletal']
+                    self.current_condition = self.conditions_to_investigate[0]
+                # Don't clear conditions_investigated so we know we're on round 2+
+            
+            next_question = self.ask_next_question()
+            return {
+                "assessment": assessment,
+                "moving_to_next": True,
+                "next_question": next_question,
+                "session_id": self.session_id,
+                "all_assessments": self.condition_confidence,  # Show all current assessments
+                "total_conditions": len(self.conditions_to_investigate),
+                "conditions_completed_once": len(self.conditions_investigated)
+            }
+                
+        except Exception as e:
+            return {"error": f"Assessment failed: {str(e)}"}
+    
+    def generate_final_report(self):
+        """Generate final detective report with all conditions and percentages"""
+        self.is_active = False
+        
+        # Create a comprehensive report showing all conditions
+        all_conditions_summary = {}
+        
+        # Include assessed conditions with confidence percentages
+        for condition, assessment in self.condition_confidence.items():
+            all_conditions_summary[condition] = {
+                "confidence_percentage": assessment.get("confidence", 0),
+                "status": "assessed",
+                "comment": assessment.get("comment", ""),
+                "indicators": assessment.get("indicators", [])
+            }
+        
+        # Include any remaining conditions from initial diagnosis that weren't fully assessed
+        if self.initial_diagnosis:
+            for condition in self.conditions_to_investigate:
+                if condition not in all_conditions_summary:
+                    # Use initial ML prediction if available
+                    initial_data = self.initial_diagnosis.get(condition, {})
+                    if isinstance(initial_data, dict):
+                        confidence = int(initial_data.get('risk_probability', 0) * 100) if 'risk_probability' in initial_data else 50
+                    else:
+                        risk_map = {'high': 80, 'moderate': 50, 'low': 20}
+                        confidence = risk_map.get(initial_data, 30)
+                    
+                    all_conditions_summary[condition] = {
+                        "confidence_percentage": confidence,
+                        "status": "initial_assessment_only",
+                        "comment": "Based on initial screening",
+                        "indicators": ["Initial health profile analysis"]
+                    }
+        
+        return {
+            "final_report": True,
+            "total_questions": self.questions_asked,
+            "all_conditions": all_conditions_summary,
+            "detailed_assessments": self.condition_confidence,
+            "conversation_history": self.conversation_history,
+            "session_id": self.session_id,
+            "investigation_complete": True,
+            "stopped_by_user": True
+        }
+
+@app.route('/start-detective', methods=['POST'])
+def start_detective():
+    """Start a new health detective session"""
+    try:
+        data = request.get_json()
+        diagnosis_data = data.get('diagnosis_data', {})
+        user_assessment = data.get('user_assessment', {})
+        
+        # Create new session
+        session_id = f"detective_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
+        detective = HealthDetective(session_id)
+        detective_sessions[session_id] = detective
+        
+        # Start investigation
+        result = detective.start_investigation(diagnosis_data, user_assessment)
+        
+        return jsonify({
+            "session_id": session_id,
+            "detective_started": True,
+            **result
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to start detective: {str(e)}"}), 500
+
+@app.route('/continue-detective', methods=['POST'])
+def continue_detective():
+    """Continue detective conversation with user's answer"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        answer = data.get('answer', '')
+        
+        if session_id not in detective_sessions:
+            return jsonify({"error": "Detective session not found"}), 404
+        
+        detective = detective_sessions[session_id]
+        
+        if not detective.is_active:
+            return jsonify({"error": "Detective session is complete"}), 400
+        
+        result = detective.process_answer(answer)
+        
+        return jsonify({
+            "session_id": session_id,
+            **result
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to continue detective: {str(e)}"}), 500
+
+@app.route('/stop-detective', methods=['POST'])
+def stop_detective():
+    """Stop detective session and get final report"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if session_id not in detective_sessions:
+            return jsonify({"error": "Detective session not found"}), 404
+        
+        detective = detective_sessions[session_id]
+        final_report = detective.generate_final_report()
+        
+        # Clean up session
+        del detective_sessions[session_id]
+        
+        return jsonify({
+            "session_id": session_id,
+            "stopped_by_user": True,
+            **final_report
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to stop detective: {str(e)}"}), 500
 
 @app.route('/diagnose', methods=['POST'])
 def diagnose():

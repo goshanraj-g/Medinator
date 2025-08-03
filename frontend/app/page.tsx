@@ -6,6 +6,8 @@ import Footer from './components/Footer';
 import WelcomePage from './components/WelcomePage';
 import ContextForm from './components/ContextForm';
 import AssessmentPage from './components/AssessmentPage';
+import DetectivePage from './components/DetectivePage';
+import DetectiveReport from './components/DetectiveReport';
 import { assessmentQuestions } from './data/assessmentQuestions';
 
 interface UserContext {
@@ -20,7 +22,7 @@ interface UserContext {
 
 
 export default function HealthAssessmentTool() {
-  const [currentStep, setCurrentStep] = useState<'welcome' | 'context' | 'assessment'>('welcome');
+  const [currentStep, setCurrentStep] = useState<'welcome' | 'context' | 'assessment' | 'detective' | 'report'>('welcome');
   const [userContext, setUserContext] = useState<UserContext>({
     age: '',
     gender: '',
@@ -30,6 +32,8 @@ export default function HealthAssessmentTool() {
     concerns: ''
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [diagnosisData, setDiagnosisData] = useState<any>(null);
+  const [detectiveReport, setDetectiveReport] = useState<any>(null);
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -87,12 +91,34 @@ export default function HealthAssessmentTool() {
         alert(data.error);
       } else {
         console.log("Diagnosis Results:", data);
-        // TODO: Display results to user
+        // Store diagnosis data and move to detective phase
+        setDiagnosisData(data);
+        setCurrentStep('detective');
       }
     } catch (error) {
       console.error("Error:", error);
       alert("Failed to get diagnosis. Please try again.");
     }
+  };
+
+  const handleDetectiveComplete = (report: any) => {
+    setDetectiveReport(report);
+    setCurrentStep('report');
+  };
+
+  const handleRestart = () => {
+    setCurrentStep('welcome');
+    setUserContext({
+      age: '',
+      gender: '',
+      height: '',
+      weight: '',
+      ethnicity: '',
+      concerns: ''
+    });
+    setErrors({});
+    setDiagnosisData(null);
+    setDetectiveReport(null);
   };
 
   return (
@@ -123,6 +149,25 @@ export default function HealthAssessmentTool() {
             <AssessmentPage
               questions={assessmentQuestions}
               onSubmit={handleAssessmentSubmit}
+            />
+          </div>
+        )}
+
+        {currentStep === 'detective' && diagnosisData && (
+          <div className="h-full overflow-y-auto scrollbar-thin">
+            <DetectivePage
+              diagnosisData={diagnosisData.predictions || diagnosisData.risk_factors}
+              userAssessment={diagnosisData.user_assessment || userContext}
+              onComplete={handleDetectiveComplete}
+            />
+          </div>
+        )}
+
+        {currentStep === 'report' && detectiveReport && (
+          <div className="h-full overflow-y-auto scrollbar-thin">
+            <DetectiveReport
+              reportData={detectiveReport}
+              onRestart={handleRestart}
             />
           </div>
         )}
