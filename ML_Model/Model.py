@@ -1,7 +1,12 @@
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
+import joblib
+from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
@@ -15,7 +20,7 @@ warnings.filterwarnings('ignore')
 
 class ChronicConditionPredictor:
     
-    def __init__(self):
+    def __init__(self, enable_plotting=True):
         self.model = None
         self.imputer = SimpleImputer(strategy='median')
         self.scaler = StandardScaler()
@@ -24,10 +29,20 @@ class ChronicConditionPredictor:
         self.optimal_threshold = 0.5
         self.class_weights = None
         self.missing_codes = [96, 99996, 9, 999, 9999]
+        self.enable_plotting = enable_plotting
         self.ccc_columns = ['CCC_035', 'CCC_065', 'CCC_075', 'CCC_095', 
                            'CCC_185', 'CCC_195', 'CCC_200']
+        self.model_version = "1.0"
+        self.training_date = None
     
-    def load_and_preprocess_data(self, file_path="DATA/filtered_data.csv"):
+    def load_and_preprocess_data(self, file_path=None):
+        # Default to the correct path relative to the project root
+        if file_path is None:
+            # Get the project root directory (parent of ML_Model)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+            file_path = os.path.join(project_root, "data", "filtered_data.csv")
+        
         try:
             df = pd.read_csv(file_path)
             print(f"Data loaded from {file_path}")
@@ -144,6 +159,7 @@ class ChronicConditionPredictor:
         
         print("Training Random Forest model...")
         self.model.fit(X_train_imputed, y_train)
+        self.training_date = datetime.now().isoformat()
         
         self.find_optimal_threshold(X_test_imputed, y_test)
         self.evaluate_model(X_test_imputed, y_test)
@@ -176,11 +192,12 @@ class ChronicConditionPredictor:
             auc = roc_auc_score(y_test, y_proba)
             print(f"\nROC-AUC Score: {auc:.3f}")
         
-        self.plot_feature_importance()
-        self.plot_confusion_matrix(y_test, y_pred)
-        
-        if len(np.unique(y_test)) > 1:
-            self.plot_roc_curve(y_test, y_proba)
+        if self.enable_plotting:
+            self.plot_feature_importance()
+            self.plot_confusion_matrix(y_test, y_pred)
+            
+            if len(np.unique(y_test)) > 1:
+                self.plot_roc_curve(y_test, y_proba)
     
     def cross_validate(self, X, y, cv_folds=5):
         X_imputed = self.imputer.fit_transform(X)
@@ -207,7 +224,11 @@ class ChronicConditionPredictor:
         plt.xlabel('Feature Importance')
         plt.gca().invert_yaxis()
         plt.tight_layout()
-        plt.show()
+        
+        if self.enable_plotting:
+            plt.show()
+        else:
+            plt.close()  # Close figure to free memory
         
         print(f"\nTop 10 Most Important Features:")
         for i in range(min(10, len(top_features))):
@@ -221,7 +242,11 @@ class ChronicConditionPredictor:
         plt.title(f'Confusion Matrix - {self.target_column}')
         plt.xlabel('Predicted')
         plt.ylabel('Actual')
-        plt.show()
+        
+        if self.enable_plotting:
+            plt.show()
+        else:
+            plt.close()  # Close figure to free memory
     
     def plot_roc_curve(self, y_true, y_proba):
         fpr, tpr, _ = roc_curve(y_true, y_proba)
@@ -235,7 +260,11 @@ class ChronicConditionPredictor:
         plt.title(f'ROC Curve - {self.target_column}')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        plt.show()
+        
+        if self.enable_plotting:
+            plt.show()
+        else:
+            plt.close()  # Close figure to free memory
     
     def predict_new_sample(self, new_data):
         if self.model is None:
@@ -247,13 +276,133 @@ class ChronicConditionPredictor:
         predictions = (proba >= self.optimal_threshold).astype(int)
         
         return predictions, proba
+    
+    def save_model(self, model_dir=None, model_name=None):
+        """
+        Save the trained model and all necessary components to disk using joblib.
+        
+        Args:
+            model_dir (str): Directory to save the model. If None, saves to ML_Model/saved_models/
+            model_name (str): Name for the model file. If None, uses target_column name.
+        
+        Returns:
+            str: Path to the saved model file
+        """
+        if self.model is None:
+            raise ValueError("No trained model to save. Train the model first.")
+        
+        # Set default model directory
+        if model_dir is None:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            model_dir = os.path.join(current_dir, "saved_models")
+        
+        # Create directory if it doesn't exist
+        os.makedirs(model_dir, exist_ok=True)
+        
+        # Set default model name
+        if model_name is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            model_name = f"chronic_condition_model_{self.target_column}_{timestamp}.joblib"
+        
+        # Prepare model data to save
+        model_data = {
+            'model': self.model,
+            'imputer': self.imputer,
+            'scaler': self.scaler,
+            'feature_names': self.feature_names,
+            'target_column': self.target_column,
+            'optimal_threshold': self.optimal_threshold,
+            'class_weights': self.class_weights,
+            'missing_codes': self.missing_codes,
+            'ccc_columns': self.ccc_columns,
+            'model_version': self.model_version,
+            'training_date': datetime.now().isoformat(),
+            'enable_plotting': self.enable_plotting
+        }
+        
+        # Save the model
+        model_path = os.path.join(model_dir, model_name)
+        joblib.dump(model_data, model_path, compress=3)
+        
+        print(f"Model saved successfully to: {model_path}")
+        print(f"Model details:")
+        print(f"  - Target condition: {self.target_column}")
+        print(f"  - Features: {len(self.feature_names)} columns")
+        print(f"  - Optimal threshold: {self.optimal_threshold:.3f}")
+        print(f"  - Model version: {self.model_version}")
+        
+        return model_path
+    
+    def load_model(self, model_path):
+        """
+        Load a saved model and all necessary components from disk.
+        
+        Args:
+            model_path (str): Path to the saved model file
+        
+        Returns:
+            bool: True if loaded successfully, False otherwise
+        """
+        try:
+            if not os.path.exists(model_path):
+                print(f"Error: Model file not found at {model_path}")
+                return False
+            
+            # Load the model data
+            model_data = joblib.load(model_path)
+            
+            # Restore all components
+            self.model = model_data['model']
+            self.imputer = model_data['imputer']
+            self.scaler = model_data['scaler']
+            self.feature_names = model_data['feature_names']
+            self.target_column = model_data['target_column']
+            self.optimal_threshold = model_data['optimal_threshold']
+            self.class_weights = model_data['class_weights']
+            self.missing_codes = model_data['missing_codes']
+            self.ccc_columns = model_data['ccc_columns']
+            self.model_version = model_data.get('model_version', '1.0')
+            self.training_date = model_data.get('training_date', 'Unknown')
+            self.enable_plotting = model_data.get('enable_plotting', True)
+            
+            print(f"Model loaded successfully from: {model_path}")
+            print(f"Model details:")
+            print(f"  - Target condition: {self.target_column}")
+            print(f"  - Features: {len(self.feature_names)} columns")
+            print(f"  - Optimal threshold: {self.optimal_threshold:.3f}")
+            print(f"  - Model version: {self.model_version}")
+            print(f"  - Training date: {self.training_date}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error loading model: {str(e)}")
+            return False
+    
+    @classmethod
+    def load_from_file(cls, model_path, enable_plotting=False):
+        """
+        Class method to create a new predictor instance and load a saved model.
+        
+        Args:
+            model_path (str): Path to the saved model file
+            enable_plotting (bool): Whether to enable plotting for this instance
+        
+        Returns:
+            ChronicConditionPredictor: New instance with loaded model, or None if failed
+        """
+        predictor = cls(enable_plotting=enable_plotting)
+        if predictor.load_model(model_path):
+            return predictor
+        else:
+            return None
 
 if __name__ == "__main__":
     print("Chronic Conditions ML Predictor")
     print("=" * 40)
     
     predictor = ChronicConditionPredictor()
-    df = predictor.load_and_preprocess_data("DATA/filtered_data.csv")
+    df = predictor.load_and_preprocess_data()  # Will use default path
     
     if df is None:
         print("Could not load data. Please check the file path.")

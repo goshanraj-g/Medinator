@@ -106,7 +106,7 @@ export default function AssessmentPage({
         </motion.div>
 
         {/* Question */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 mb-8 max-w-2xl border border-gray-700/50">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 mb-8 max-w-2xl border border-gray-700/50 h-64 flex flex-col justify-center">
           {currentQuestion.question_id === 1 && (
             <div className="mb-6 p-4 bg-blue-500/20 border border-blue-400/30 rounded-xl">
               <p className="text-blue-200 text-sm font-medium">
@@ -130,14 +130,14 @@ export default function AssessmentPage({
         </div>
 
         {/* Answer Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
+        <div className="flex flex-wrap justify-center gap-3 max-w-5xl w-full">
           {currentQuestion.options.map((option) => (
             <motion.button
               key={option}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => handleAnswerSelect(option)}
-              className="px-6 py-4 bg-gray-700 text-gray-300 border border-gray-600 rounded-xl hover:bg-gray-600 hover:border-gray-500 hover:shadow-lg hover:scale-105 transition-all duration-300 ease-out text-lg font-medium"
+              className="px-4 py-3 bg-gray-700 text-gray-300 border border-gray-600 rounded-xl hover:bg-gray-600 hover:border-gray-500 hover:shadow-lg hover:scale-105 transition-all duration-300 ease-out text-base font-medium flex-1 min-w-[120px] max-w-[200px]"
             >
               {option}
             </motion.button>

@@ -96,29 +96,35 @@ export default function HealthAssessmentTool() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black font-sans flex flex-col">
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black font-sans flex flex-col overflow-hidden">
       <Header />
 
-      <main className="flex-1 max-w-4xl mx-auto px-6 py-8 font-sans">
+      <main className="flex-1 max-w-4xl mx-auto px-6 py-4 font-sans overflow-hidden">
         {currentStep === 'welcome' && (
-          <WelcomePage onStartAssessment={handleStartAssessment} />
+          <div className="h-full flex items-center justify-center">
+            <WelcomePage onStartAssessment={handleStartAssessment} />
+          </div>
         )}
 
         {currentStep === 'context' && (
-          <ContextForm
-            userContext={userContext}
-            setUserContext={setUserContext}
-            errors={errors}
-            onBack={() => setCurrentStep('welcome')}
-            onSubmit={handleContextSubmit}
-          />
+          <div className="h-full overflow-y-auto scrollbar-thin">
+            <ContextForm
+              userContext={userContext}
+              setUserContext={setUserContext}
+              errors={errors}
+              onBack={() => setCurrentStep('welcome')}
+              onSubmit={handleContextSubmit}
+            />
+          </div>
         )}
 
         {currentStep === 'assessment' && (
-          <AssessmentPage
-            questions={assessmentQuestions}
-            onSubmit={handleAssessmentSubmit}
-          />
+          <div className="h-full flex items-center justify-center">
+            <AssessmentPage
+              questions={assessmentQuestions}
+              onSubmit={handleAssessmentSubmit}
+            />
+          </div>
         )}
       </main>
 
