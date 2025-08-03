@@ -26,7 +26,7 @@ export default function WelcomePage({ onStartAssessment }: WelcomePageProps) {
           />
         </motion.div>
         <h2 className="text-5xl font-bold text-white mb-6">
-          Welcome to Healthanator
+          Welcome to the Medinator!
         </h2>
         <p className="text-lg text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
           Your personal AI-powered health companion, designed to assess disease

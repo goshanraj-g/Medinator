@@ -5,6 +5,8 @@ import sys
 import os
 import google.generativeai as genai
 import json
+import random
+from datetime import datetime
 
 # Add the parent directory to the path so we can import from ML_Model
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -59,9 +61,22 @@ CORS(app)
 # Store detective sessions
 detective_sessions = {}
 
+def get_full_condition_name(condition):
+    """Convert short condition names to full display names."""
+    condition_mapping = {
+        'cardiovascular': 'Cardiovascular Disease',
+        'respiratory': 'Respiratory Disease',
+        'diabetes': 'Type 2 Diabetes',
+        'kidney': 'Kidney Disease',
+        'arthritis': 'Arthritis',
+        'cancer': 'Cancer',
+        'stroke': 'Stroke History'
+    }
+    return condition_mapping.get(condition, condition.title())
+
 # Configure Gemini AI
 try:
-    api_key = os.getenv('GOOGLE_AI_API_KEY') or "AIzaSyCMHHE8rAD7vnsIvSXss69DsEsoSN4FaxQ"
+    api_key = os.getenv('GOOGLE_AI_API_KEY')
     genai.configure(api_key=api_key)
     gemini_model = genai.GenerativeModel('gemini-1.5-flash')
     GEMINI_AVAILABLE = True
@@ -173,23 +188,27 @@ class HealthDetective:
                     risk_map = {'high': 0.8, 'moderate': 0.5, 'low': 0.2}
                     risk_conditions.append((condition, risk_map[data]))
             
-            # Sort by risk probability
-            risk_conditions.sort(key=lambda x: x[1], reverse=True)
+            # Sort by risk probability but add some randomization
+            risk_conditions.sort(key=lambda x: x[1] + random.uniform(-0.1, 0.1), reverse=True)
             self.conditions_to_investigate = [cond for cond, _ in risk_conditions]
             
             # Ensure we have at least some conditions to investigate
             if not self.conditions_to_investigate:
-                self.conditions_to_investigate = ['cardiovascular', 'diabetes', 'mental_health', 'respiratory', 'musculoskeletal']
+                base_conditions = ['cardiovascular', 'diabetes', 'mental_health', 'respiratory', 'musculoskeletal', 'arthritis', 'kidney']
+                random.shuffle(base_conditions)  # Randomize the order
+                self.conditions_to_investigate = base_conditions[:5]  # Take 5 random conditions
         else:
-            self.conditions_to_investigate = ['cardiovascular', 'diabetes', 'mental_health', 'respiratory', 'musculoskeletal']
+            base_conditions = ['cardiovascular', 'diabetes', 'mental_health', 'respiratory', 'musculoskeletal', 'arthritis', 'kidney']
+            random.shuffle(base_conditions)
+            self.conditions_to_investigate = base_conditions[:5]
         
-        # Start with the highest risk condition
+        # Start with the highest risk condition (now with some randomization)
         if self.conditions_to_investigate:
             self.current_condition = self.conditions_to_investigate[0]
         else:
             # Ultimate fallback
-            self.current_condition = 'general_health'
-            self.conditions_to_investigate = ['general_health']
+            self.current_condition = random.choice(['cardiovascular', 'diabetes', 'mental_health'])
+            self.conditions_to_investigate = [self.current_condition]
         
         return self.ask_next_question()
     
@@ -205,29 +224,83 @@ class HealthDetective:
                 for i, q in enumerate(self.conversation_history[-5:])  # Last 5 Q&As
             ])
             
-            prompt = f"""You are a health genie like Akinator who can magically guess people's health patterns! You're playing a fun guessing game.
+            # Create dynamic context based on user profile and condition
+            age_group = "young adult" if int(self.user_profile.get('age', 30)) < 30 else "middle-aged" if int(self.user_profile.get('age', 30)) < 60 else "older adult"
+            condition_questions_count = len([q for q in self.conversation_history if q.get('condition') == self.current_condition])
+            
+            # Dynamic question angles based on condition and user profile
+            question_angles = {
+                'cardiovascular': [
+                    'physical activity and energy levels',
+                    'breathing during activities', 
+                    'chest sensations or comfort',
+                    'family patterns and genetics',
+                    'lifestyle and stress factors'
+                ],
+                'diabetes': [
+                    'energy levels throughout the day',
+                    'thirst and bathroom habits',
+                    'healing and recovery patterns',
+                    'family health patterns',
+                    'weight and appetite changes'
+                ],
+                'respiratory': [
+                    'breathing patterns and comfort',
+                    'seasonal or environmental reactions',
+                    'sleep quality and breathing',
+                    'physical activity tolerance',
+                    'coughing or throat comfort'
+                ],
+                'mental_health': [
+                    'daily mood and energy patterns',
+                    'sleep and rest quality',
+                    'social interactions and relationships',
+                    'stress management and coping',
+                    'motivation and interest levels'
+                ],
+                'arthritis': [
+                    'joint comfort and flexibility',
+                    'morning stiffness or mobility',
+                    'weather sensitivity',
+                    'activity limitations',
+                    'pain patterns throughout day'
+                ]
+            }
+            
+            # Get relevant angle for current condition and question number
+            angles = question_angles.get(self.current_condition, ['general health and wellbeing', 'daily activities', 'energy levels'])
+            current_angle = angles[condition_questions_count % len(angles)]
+            
+            prompt = f"""You are a health detective like Akinator discovering this {age_group} person's health patterns.
 
-CURRENT FOCUS: {self.current_condition}
-QUESTIONS ASKED SO FAR: {self.questions_asked}
-AREAS ALREADY EXPLORED: {self.conditions_investigated}
+FOCUS: {self.current_condition} (Question #{condition_questions_count + 1})
+ANGLE: {current_angle}
+TOTAL QUESTIONS: {self.questions_asked}
+EXPLORED: {', '.join(self.conditions_investigated) if self.conditions_investigated else 'Just getting started'}
 
-USER BASICS:
-- Age: {self.user_profile.get('age', 'Unknown')}
+PERSON:
+- Age: {self.user_profile.get('age', 'Unknown')} ({age_group})
 - Gender: {self.user_profile.get('gender', 'Unknown')}
+- ML Risk Hints: {self.initial_diagnosis.get(self.current_condition, 'No clear pattern')}
 
-RECENT CONVERSATION:
-{conversation_context}
+PREVIOUS CONVERSATION:
+{conversation_context if conversation_context else 'First question about ' + self.current_condition}
 
-GENIE RULES:
-1. Ask ONE question that will help you confirm if the user has {self.current_condition}
-2. Just ask the question, no extra stuff
-3. Keep questions simple, imagine talking to anyone from teens to grandparents
-4. Focus on everyday experiences, not medical terms
-6. Don't mention medical conditions directly - just ask about how they feel or live
+RULES:
+1. Ask about {current_angle} related to {self.current_condition} risk
+2. Personal to {age_group} {self.user_profile.get('gender', 'person')}
+3. Everyday language, not medical terms
+4. Build on previous answers
+5. Short, simple, direct questions
+6. Ask questions that will give CLEAR YES/NO answers to determine HIGH or LOW risk
+7. Avoid questions that lead to "medium" or "sometimes" answers
 
-Ask your next  question about {self.current_condition}. Make it simple!
+Dont give them a whole report if you detect something
+Dont say question number, and dont tell user what disease they have when you do detect something
 
-IMPORTANT: End your response with exactly 5 multiple choice options separated by "|" like this:
+Ask a decisive question that will clearly indicate HIGH RISK or LOW RISK:
+
+IMPORTANT: End with exactly 5 options separated by "|" like this:
 Options: Yes, definitely|Sometimes|Rarely|No, never|I'm not sure"""
 
             response = gemini_model.generate_content(prompt)
@@ -241,7 +314,14 @@ Options: Yes, definitely|Sometimes|Rarely|No, never|I'm not sure"""
                 options = [opt.strip() for opt in options_text.split("|")]
             else:
                 question = full_response
-                options = ["Yes, definitely", "Sometimes", "Rarely", "No, never", "I'm not sure"]
+                # Randomize default options occasionally
+                default_option_sets = [
+                    ["Yes, definitely", "Sometimes", "Rarely", "No, never", "I'm not sure"],
+                    ["Always", "Often", "Sometimes", "Rarely", "Never"],
+                    ["Very much", "Moderately", "A little", "Not really", "Not at all"],
+                    ["Frequently", "Occasionally", "Seldom", "Never", "Unsure"]
+                ]
+                options = random.choice(default_option_sets)
             
             # Clean up the question
             if question.startswith('"') and question.endswith('"'):
@@ -270,7 +350,7 @@ Options: Yes, definitely|Sometimes|Rarely|No, never|I'm not sure"""
             return {"error": f"Failed to generate question: {str(e)}"}
     
     def process_answer(self, answer):
-        """Process user's answer and determine next action"""
+        """Process user's answer and determine next action"""        
         # Record the conversation
         if self.conversation_history and len(self.conversation_history) > 0:
             # Update the last question with the answer
@@ -303,31 +383,93 @@ Options: Yes, definitely|Sometimes|Rarely|No, never|I'm not sure"""
                 f"Q: {q['question']}\nA: {q['answer']}" for q in condition_conversation
             ])
             
-            prompt = f"""Based on this conversation about {self.current_condition}, provide a confidence assessment:
+            # Create more dynamic assessment prompt
+            age_group = "young adult" if int(self.user_profile.get('age', 30)) < 30 else "middle-aged" if int(self.user_profile.get('age', 30)) < 60 else "older adult"
+            question_count = len(condition_conversation)
+            
+            prompt = f"""HEALTH RISK ASSESSMENT for {self.current_condition.upper()}
 
-CONVERSATION:
+You are a medical assessment AI analyzing health risk patterns. Be DECISIVE and CLEAR.
+KEEP IT AT 3 MAX ILLNESSES
+
+PERSON: {age_group}, Age {self.user_profile.get('age', 'Unknown')}, {self.user_profile.get('gender', 'Unknown')}
+
+CONVERSATION ABOUT {self.current_condition.upper()}:
 {conversation_text}
 
-INITIAL ML PREDICTION: {self.initial_diagnosis.get(self.current_condition, 'Not specified')}
+INITIAL ML RISK SCORE: {self.initial_diagnosis.get(self.current_condition, 'No initial data')}
 
-Provide:
-1. Your confidence percentage (0-100%) that they have risk factors for {self.current_condition}
-2. A brief "Interesting..." style comment like Akinator
-3. Key indicators you found
+ASSESSMENT RULES - BE DECISIVE:
+Dont say question number, and dont tell user what disease they have when you do detect something, unless it's at the very end for the report
 
-Format as JSON: {{"confidence": 85, "comment": "Interesting...", "indicators": ["indicator1", "indicator2"]}}"""
+
+🔴 HIGH/VERY HIGH RISK if:
+- Multiple "Yes" answers to risk factor questions
+- Strong positive symptoms reported
+- Family history + personal symptoms
+- Age factors + multiple risk indicators
+
+🟡 MEDIUM RISK if:
+- Mixed answers (some yes, some no)
+- "Sometimes" answers to key symptoms
+- Some risk factors present but not severe
+
+🟢 LOW RISK if:
+- Mostly "No, never" answers
+- No significant symptoms reported
+- Healthy lifestyle patterns
+- No family history + no symptoms
+
+STOP DEFAULTING TO MEDIUM! Analyze their actual answers:
+- If they say "Yes" to multiple concerning things → HIGH RISK
+- If they say "No" to most things → LOW RISK
+- Only use MEDIUM for truly mixed results
+
+Required JSON format: {{"risk_level": "low|medium|high|very high", "comment": "Clear assessment based on their answers", "indicators": ["specific answer patterns"]}}
+
+BE DECISIVE - NO MORE AUTOMATIC MEDIUM RATINGS!"""
 
             response = gemini_model.generate_content(prompt)
             
             try:
                 # Try to parse JSON response
-                assessment = json.loads(response.text.strip())
-            except:
-                # Fallback if JSON parsing fails
+                response_text = response.text.strip()
+                if response_text.startswith('```json'):
+                    response_text = response_text.replace('```json', '').replace('```', '').strip()
+                assessment = json.loads(response_text)
+                
+                # Validate that risk_level is one of the expected values
+                valid_risk_levels = ['low', 'medium', 'high', 'very high']
+                if assessment.get('risk_level') not in valid_risk_levels:
+                    raise ValueError("Invalid risk level")
+                    
+            except Exception as parse_error:
+                print(f"JSON parsing failed: {parse_error}, Raw response: {response.text}")
+                
+                # Intelligent fallback based on conversation content
+                conversation_lower = conversation_text.lower()
+                yes_count = conversation_lower.count('yes')
+                no_count = conversation_lower.count('no, never') + conversation_lower.count('never')
+                sometimes_count = conversation_lower.count('sometimes')
+                
+                # Determine risk based on answer patterns
+                if yes_count >= 2:
+                    risk_level = "high"
+                    comment = "Multiple concerning indicators identified from your responses."
+                elif no_count >= 2:
+                    risk_level = "low" 
+                    comment = "Your responses suggest healthy patterns in this area."
+                elif sometimes_count >= 1 or yes_count == 1:
+                    risk_level = "medium"
+                    comment = "Some patterns detected that warrant attention."
+                else:
+                    risk_level = "low"
+                    comment = "Limited risk indicators found."
+                
                 assessment = {
-                    "confidence": 70,
-                    "comment": "Interesting... I'm seeing some patterns here.",
-                    "indicators": ["Based on your responses"]
+                    "risk_level": risk_level,
+                    "comment": comment,
+                    "indicators": ["Based on response patterns"]
                 }
             
             # Record assessment
@@ -367,38 +509,50 @@ Format as JSON: {{"confidence": 85, "comment": "Interesting...", "indicators": [
             return {"error": f"Assessment failed: {str(e)}"}
     
     def generate_final_report(self):
-        """Generate final detective report with all conditions and percentages"""
+        """Generate final detective report with all conditions and risk levels"""
         self.is_active = False
         
         # Create a comprehensive report showing all conditions
         all_conditions_summary = {}
         
-        # Include assessed conditions with confidence percentages
+        # Include assessed conditions with risk levels
         for condition, assessment in self.condition_confidence.items():
-            all_conditions_summary[condition] = {
-                "confidence_percentage": assessment.get("confidence", 0),
+            full_name = get_full_condition_name(condition)
+            all_conditions_summary[full_name] = {
+                "risk_level": assessment.get("risk_level", "medium"),
                 "status": "assessed",
                 "comment": assessment.get("comment", ""),
-                "indicators": assessment.get("indicators", [])
+                "indicators": assessment.get("indicators", []),
+                "condition_key": condition  # Keep original key for reference
             }
         
         # Include any remaining conditions from initial diagnosis that weren't fully assessed
         if self.initial_diagnosis:
             for condition in self.conditions_to_investigate:
-                if condition not in all_conditions_summary:
+                full_name = get_full_condition_name(condition)
+                if full_name not in all_conditions_summary:
                     # Use initial ML prediction if available
                     initial_data = self.initial_diagnosis.get(condition, {})
                     if isinstance(initial_data, dict):
-                        confidence = int(initial_data.get('risk_probability', 0) * 100) if 'risk_probability' in initial_data else 50
+                        risk_prob = initial_data.get('risk_probability', 0.5)
+                        if risk_prob >= 0.8:
+                            risk_level = "very high"
+                        elif risk_prob >= 0.6:
+                            risk_level = "high"
+                        elif risk_prob >= 0.4:
+                            risk_level = "medium"
+                        else:
+                            risk_level = "low"
                     else:
-                        risk_map = {'high': 80, 'moderate': 50, 'low': 20}
-                        confidence = risk_map.get(initial_data, 30)
+                        risk_map = {'high': 'high', 'moderate': 'medium', 'low': 'low'}
+                        risk_level = risk_map.get(initial_data, 'medium')
                     
-                    all_conditions_summary[condition] = {
-                        "confidence_percentage": confidence,
+                    all_conditions_summary[full_name] = {
+                        "risk_level": risk_level,
                         "status": "initial_assessment_only",
                         "comment": "Based on initial screening",
-                        "indicators": ["Initial health profile analysis"]
+                        "indicators": ["Initial health profile analysis"],
+                        "condition_key": condition  # Keep original key for reference
                     }
         
         return {

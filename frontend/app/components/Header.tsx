@@ -12,7 +12,7 @@ export default function Header() {
               />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Healthinator</h1>
+              <h1 className="text-lg font-bold text-white">Medinator</h1>
             </div>
           </div>
           <div className="hidden md:flex items-center space-x-6">

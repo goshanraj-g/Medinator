@@ -11,7 +11,7 @@ interface DetectiveResponse {
   session_id?: string;
   can_stop?: boolean;
   assessment?: {
-    confidence: number;
+    risk_level: string;
     comment: string;
     indicators: string[];
   };
@@ -271,11 +271,11 @@ export default function DetectivePage({
                   ✨ Health Pattern Discovery
                 </h4>
                 <div className="flex items-center justify-center mb-4">
-                  <div className="text-4xl font-bold text-purple-300">
-                    {currentAssessment.confidence}%
+                  <div className="text-4xl font-bold text-purple-300 capitalize">
+                    {currentAssessment.risk_level} Risk
                   </div>
                   <div className="ml-4 text-gray-300">
-                    confident about this pattern
+                    risk level identified
                   </div>
                 </div>
                 {currentAssessment.indicators && (
@@ -419,8 +419,8 @@ export default function DetectivePage({
                             {condition.replace(/_/g, ' ')}
                           </h4>
                           <div className="flex items-center justify-center mb-2">
-                            <div className="text-2xl font-bold text-purple-300">
-                              {assessment.confidence}%
+                            <div className="text-xl font-bold text-purple-300 capitalize">
+                              {assessment.risk_level} Risk
                             </div>
                           </div>
                           <p className="text-xs text-gray-400 italic">
@@ -440,7 +440,7 @@ export default function DetectivePage({
                     {investigationHistory.map((item, idx) => (
                       <div key={idx} className="bg-gray-800/50 rounded-lg px-3 py-1 text-xs">
                         <span className="text-purple-300">Area {idx + 1}</span>: 
-                        <span className="text-white ml-1">{item.assessment.confidence}% confident</span>
+                        <span className="text-white ml-1 capitalize">{item.assessment.risk_level} risk</span>
                       </div>
                     ))}
                   </div>

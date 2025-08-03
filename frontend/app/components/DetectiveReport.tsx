@@ -20,26 +20,33 @@ export default function DetectiveReport({ reportData, onRestart }: DetectiveRepo
   // Use all_conditions if available, fallback to detailed_assessments for backwards compatibility
   const conditionsData = all_conditions || detailed_assessments || {};
 
-  // Sort conditions by confidence
+  // Sort conditions by risk level priority
+  const riskOrder = { "very high": 4, "high": 3, "medium": 2, "low": 1 };
   const sortedConditions = Object.entries(conditionsData)
     .sort(([,a]: any, [,b]: any) => {
-      const confidenceA = a.confidence_percentage || a.confidence || 0;
-      const confidenceB = b.confidence_percentage || b.confidence || 0;
-      return confidenceB - confidenceA;
+      const riskA = riskOrder[a.risk_level as keyof typeof riskOrder] || 1;
+      const riskB = riskOrder[b.risk_level as keyof typeof riskOrder] || 1;
+      return riskB - riskA;
     });
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 80) return "text-red-400";
-    if (confidence >= 60) return "text-yellow-400";
-    if (confidence >= 40) return "text-blue-400";
-    return "text-green-400";
+  const getRiskColor = (riskLevel: string) => {
+    switch (riskLevel) {
+      case "very high": return "text-red-400";
+      case "high": return "text-orange-400";
+      case "medium": return "text-yellow-400";
+      case "low": return "text-green-400";
+      default: return "text-gray-400";
+    }
   };
 
-  const getConfidenceLabel = (confidence: number) => {
-    if (confidence >= 80) return "High Risk";
-    if (confidence >= 60) return "Moderate Risk";
-    if (confidence >= 40) return "Low-Moderate Risk";
-    return "Low Risk";
+  const getRiskLabel = (riskLevel: string) => {
+    switch (riskLevel) {
+      case "very high": return "Very High Risk";
+      case "high": return "High Risk";
+      case "medium": return "Medium Risk";
+      case "low": return "Low Risk";
+      default: return "Unknown Risk";
+    }
   };
 
   return (
@@ -93,12 +100,12 @@ export default function DetectiveReport({ reportData, onRestart }: DetectiveRepo
             </div>
             <div className="bg-gray-700/30 rounded-xl p-4">
               <div className="text-3xl font-bold text-green-400">
-                {sortedConditions.length > 0 ? Math.round(
-                  sortedConditions.reduce((acc: number, [,data]: any) => acc + (data.confidence_percentage || data.confidence || 0), 0) / 
-                  sortedConditions.length
-                ) : 0}%
+                {sortedConditions.length > 0 ? 
+                  sortedConditions.filter(([,data]: any) => 
+                    data.risk_level === "low" || data.risk_level === "medium"
+                  ).length : 0}
               </div>
-              <div className="text-gray-300 text-sm">Avg Confidence</div>
+              <div className="text-gray-300 text-sm">Low-Medium Risk</div>
             </div>
           </div>
         </div>
@@ -146,7 +153,7 @@ export default function DetectiveReport({ reportData, onRestart }: DetectiveRepo
                 )}
               </div>
 
-              {/* Confidence Display */}
+              {/* Risk Level Display */}
               <div className="flex flex-col items-center min-w-[200px]">
                 <div className="relative w-32 h-32 mb-4">
                   <motion.div
@@ -157,7 +164,11 @@ export default function DetectiveReport({ reportData, onRestart }: DetectiveRepo
                   />
                   <motion.div
                     initial={{ pathLength: 0 }}
-                    animate={{ pathLength: (data.confidence_percentage || data.confidence || 0) / 100 }}
+                    animate={{ 
+                      pathLength: data.risk_level === "very high" ? 1 : 
+                                 data.risk_level === "high" ? 0.75 : 
+                                 data.risk_level === "medium" ? 0.5 : 0.25 
+                    }}
                     transition={{ delay: index * 0.1 + 0.5, duration: 1 }}
                     className="absolute inset-0"
                   >
@@ -168,25 +179,29 @@ export default function DetectiveReport({ reportData, onRestart }: DetectiveRepo
                         r="56"
                         fill="none"
                         stroke={
-                          (data.confidence_percentage || data.confidence || 0) >= 80 ? "#ef4444" :
-                          (data.confidence_percentage || data.confidence || 0) >= 60 ? "#eab308" :
-                          (data.confidence_percentage || data.confidence || 0) >= 40 ? "#3b82f6" : "#22c55e"
+                          data.risk_level === "very high" ? "#ef4444" :
+                          data.risk_level === "high" ? "#f97316" :
+                          data.risk_level === "medium" ? "#eab308" : "#22c55e"
                         }
                         strokeWidth="8"
                         strokeLinecap="round"
                         strokeDasharray={`${2 * Math.PI * 56}`}
-                        strokeDashoffset={`${2 * Math.PI * 56 * (1 - (data.confidence_percentage || data.confidence || 0) / 100)}`}
+                        strokeDashoffset={`${2 * Math.PI * 56 * (1 - (
+                          data.risk_level === "very high" ? 1 : 
+                          data.risk_level === "high" ? 0.75 : 
+                          data.risk_level === "medium" ? 0.5 : 0.25
+                        ))}`}
                       />
                     </svg>
                   </motion.div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className={`text-2xl font-bold ${getConfidenceColor(data.confidence_percentage || data.confidence || 0)}`}>
-                      {data.confidence_percentage || data.confidence || 0}%
+                    <span className={`text-xl font-bold ${getRiskColor(data.risk_level || "medium")} capitalize`}>
+                      {data.risk_level || "medium"} Risk
                     </span>
                   </div>
                 </div>
-                <div className={`text-lg font-semibold ${getConfidenceColor(data.confidence_percentage || data.confidence || 0)}`}>
-                  {getConfidenceLabel(data.confidence_percentage || data.confidence || 0)}
+                <div className={`text-lg font-semibold ${getRiskColor(data.risk_level || "medium")}`}>
+                  {getRiskLabel(data.risk_level || "medium")}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
                   {data.status === "assessed" ? "Fully assessed" : "Initial screening"}
