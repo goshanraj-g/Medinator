@@ -61,7 +61,7 @@ detective_sessions = {}
 
 # Configure Gemini AI
 try:
-    api_key = os.getenv('GOOGLE_AI_API_KEY')
+    api_key = os.getenv('GOOGLE_AI_API_KEY') or "AIzaSyCMHHE8rAD7vnsIvSXss69DsEsoSN4FaxQ"
     genai.configure(api_key=api_key)
     gemini_model = genai.GenerativeModel('gemini-1.5-flash')
     GEMINI_AVAILABLE = True

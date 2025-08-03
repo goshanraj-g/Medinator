@@ -217,7 +217,7 @@ export default function DetectivePage({
             />
           </motion.div>
           <h2 className="text-3xl font-bold text-white mb-4">
-            � Preparing Magic Crystal Ball...
+            Preparing Magic Crystal Ball...
           </h2>
           <p className="text-gray-300 text-lg">
             The health genie is awakening to read your patterns

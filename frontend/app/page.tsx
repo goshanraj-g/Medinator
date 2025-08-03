@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import WelcomePage from './components/WelcomePage';
 import ContextForm from './components/ContextForm';
 import AssessmentPage from './components/AssessmentPage';
+import ProcessingPage from './components/ProcessingPage';
 import DetectivePage from './components/DetectivePage';
 import DetectiveReport from './components/DetectiveReport';
 import { assessmentQuestions } from './data/assessmentQuestions';
@@ -22,7 +23,7 @@ interface UserContext {
 
 
 export default function HealthAssessmentTool() {
-  const [currentStep, setCurrentStep] = useState<'welcome' | 'context' | 'assessment' | 'detective' | 'report'>('welcome');
+  const [currentStep, setCurrentStep] = useState<'welcome' | 'context' | 'assessment' | 'processing' | 'detective' | 'report'>('welcome');
   const [userContext, setUserContext] = useState<UserContext>({
     age: '',
     gender: '',
@@ -34,6 +35,7 @@ export default function HealthAssessmentTool() {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [diagnosisData, setDiagnosisData] = useState<any>(null);
   const [detectiveReport, setDetectiveReport] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -72,6 +74,9 @@ export default function HealthAssessmentTool() {
 
   const handleAssessmentSubmit = async (assessmentAnswers: { [key: string]: string }) => {
     try {
+      setIsProcessing(true);
+      setCurrentStep('processing');
+      
       // Combine context answers and diagnostic answers
       const combinedAnswers = { 
         ...userContext, 
@@ -89,15 +94,20 @@ export default function HealthAssessmentTool() {
       const data = await response.json();
       if (data.error) {
         alert(data.error);
+        setIsProcessing(false);
+        setCurrentStep('assessment');
       } else {
         console.log("Diagnosis Results:", data);
         // Store diagnosis data and move to detective phase
         setDiagnosisData(data);
+        setIsProcessing(false);
         setCurrentStep('detective');
       }
     } catch (error) {
       console.error("Error:", error);
       alert("Failed to get diagnosis. Please try again.");
+      setIsProcessing(false);
+      setCurrentStep('assessment');
     }
   };
 
@@ -119,6 +129,7 @@ export default function HealthAssessmentTool() {
     setErrors({});
     setDiagnosisData(null);
     setDetectiveReport(null);
+    setIsProcessing(false);
   };
 
   return (
@@ -150,6 +161,12 @@ export default function HealthAssessmentTool() {
               questions={assessmentQuestions}
               onSubmit={handleAssessmentSubmit}
             />
+          </div>
+        )}
+
+        {currentStep === 'processing' && (
+          <div className="h-full flex items-center justify-center">
+            <ProcessingPage />
           </div>
         )}
 

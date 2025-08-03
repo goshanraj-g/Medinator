@@ -67,7 +67,7 @@ export default function DetectiveReport({ reportData, onRestart }: DetectiveRepo
           animate={{ opacity: 1, y: 0 }}
           className="text-4xl font-bold text-white mb-4"
         >
-          � Genie's Health Reading Complete!
+          Genie's Health Reading Complete!
         </motion.h1>
 
         {stopped_by_user && (
