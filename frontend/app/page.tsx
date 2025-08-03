@@ -6,7 +6,7 @@ import Footer from './components/Footer';
 import WelcomePage from './components/WelcomePage';
 import ContextForm from './components/ContextForm';
 import AssessmentPage from './components/AssessmentPage';
-import { assessmentQuestions, getQuestionById, getNextQuestion, Question } from './data/assessmentQuestions';
+import { assessmentQuestions } from './data/assessmentQuestions';
 
 interface UserContext {
   age: string;
@@ -15,19 +15,6 @@ interface UserContext {
   weight: string;
   ethnicity: string;
   concerns: string;
-  // Lifestyle factors
-  smoking: string;
-  alcohol: string;
-  activity: string;
-  sleep: string;
-  // Medical history
-  familyHistory: string;
-  conditions: string;
-  medications: string;
-  // Mental health
-  stress: string;
-  mentalHealth: string;
-  socialSupport: string;
 }
 
 
@@ -40,23 +27,9 @@ export default function HealthAssessmentTool() {
     height: '',
     weight: '',
     ethnicity: '',
-    concerns: '',
-    // Lifestyle factors
-    smoking: '',
-    alcohol: '',
-    activity: '',
-    sleep: '',
-    // Medical history
-    familyHistory: '',
-    conditions: '',
-    medications: '',
-    // Mental health
-    stress: '',
-    mentalHealth: '',
-    socialSupport: ''
+    concerns: ''
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [currentQuestion, setCurrentQuestion] = useState<Question>(assessmentQuestions[0]);
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -80,10 +53,6 @@ export default function HealthAssessmentTool() {
       }).then((response) => response.json())
       .then((data) => {
         console.log('Response from backend:', data);
-        // Update current question with backend response
-        if (data.question) {
-          setCurrentQuestion(data);
-        }
       })
       .catch((error) => {
         console.error('Error fetching data:', error);
@@ -97,54 +66,32 @@ export default function HealthAssessmentTool() {
     setCurrentStep('context');
   };
 
-  const handleAnswerSelect = (answer: string) => {
-    // Store the answer in userContext based on question category
-    const updatedContext = { ...userContext };
-    
-    // Map answers to userContext fields based on question category
-    switch (currentQuestion.category) {
-      case 'mental_health':
-        if (currentQuestion.question_id === 1) updatedContext.stress = answer;
-        else if (currentQuestion.question_id === 2) updatedContext.mentalHealth = answer;
-        break;
-      case 'lifestyle':
-        if (currentQuestion.question_id === 3) updatedContext.sleep = answer;
-        else if (currentQuestion.question_id === 4) updatedContext.smoking = answer;
-        else if (currentQuestion.question_id === 5) updatedContext.alcohol = answer;
-        else if (currentQuestion.question_id === 6) updatedContext.activity = answer;
-        break;
-      case 'medical_history':
-        if (currentQuestion.question_id === 7) updatedContext.familyHistory = answer;
-        else if (currentQuestion.question_id === 9) updatedContext.conditions = answer;
-        break;
-      case 'social':
-        if (currentQuestion.question_id === 11) updatedContext.socialSupport = answer;
-        break;
-    }
-    
-    setUserContext(updatedContext);
-    
-    // Get next question from our question bank
-    const nextQuestion = getNextQuestion(currentQuestion.question_id);
-    
-    if (nextQuestion) {
-      setCurrentQuestion(nextQuestion);
-    } else {
-      // Assessment complete - send all data to backend for analysis
-      console.log('Assessment complete, sending data for analysis:', updatedContext);
+  const handleAssessmentSubmit = async (assessmentAnswers: { [key: string]: string }) => {
+    try {
+      // Combine context answers and diagnostic answers
+      const combinedAnswers = { 
+        ...userContext, 
+        ...assessmentAnswers 
+      };
       
-      fetch('http://127.0.0.1:5000/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedContext),
-      }).then((response) => response.json())
-      .then((data) => {
-        console.log('Analysis results:', data);
-        // Handle results - could show a results page
-      })
-      .catch((error) => {
-        console.error('Error analyzing data:', error);
+      console.log("Sending combined answers:", combinedAnswers);
+      
+      const response = await fetch("http://localhost:5000/diagnose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: combinedAnswers }),
       });
+
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+      } else {
+        console.log("Diagnosis Results:", data);
+        // TODO: Display results to user
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to get diagnosis. Please try again.");
     }
   };
 
@@ -169,8 +116,8 @@ export default function HealthAssessmentTool() {
 
         {currentStep === 'assessment' && (
           <AssessmentPage
-            currentQuestion={currentQuestion}
-            onAnswerSelect={handleAnswerSelect}
+            questions={assessmentQuestions}
+            onSubmit={handleAssessmentSubmit}
           />
         )}
       </main>

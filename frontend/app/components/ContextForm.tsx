@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import React, { useState } from 'react';
 
 interface UserContext {
   age: string;
@@ -9,19 +10,6 @@ interface UserContext {
   weight: string;
   ethnicity: string;
   concerns: string;
-  // Lifestyle factors
-  smoking: string;
-  alcohol: string;
-  activity: string;
-  sleep: string;
-  // Medical history
-  familyHistory: string;
-  conditions: string;
-  medications: string;
-  // Mental health
-  stress: string;
-  mentalHealth: string;
-  socialSupport: string;
 }
 
 interface ContextFormProps {
@@ -31,6 +19,7 @@ interface ContextFormProps {
   onBack: () => void;
   onSubmit: () => void;
 }
+
 
 export default function ContextForm({
   userContext,
