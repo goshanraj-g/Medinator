@@ -3,6 +3,8 @@ from flask_cors import CORS
 import pandas as pd
 import sys
 import os
+import google.generativeai as genai
+import json
 
 # Add the parent directory to the path so we can import from ML_Model
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -54,6 +56,21 @@ except Exception as e:
 app = Flask(__name__)
 CORS(app)
 
+# Store detective sessions
+detective_sessions = {}
+
+# Configure Gemini AI
+try:
+    api_key = os.getenv('GOOGLE_AI_API_KEY') or 'AIzaSyCkNVGS5ow-ClY_oEvyy7mGqjWZuq7dyjM'
+    genai.configure(api_key=api_key)
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+    GEMINI_AVAILABLE = True
+    print("✅ Gemini AI configured successfully!")
+except Exception as e:
+    print(f"⚠️ Warning: Could not configure Gemini AI: {e}")
+    gemini_model = None
+    GEMINI_AVAILABLE = False
+
 @app.route('/')
 def home():
     return 'Welcome to the Medinator API!'
@@ -68,6 +85,65 @@ def analyze_data():
 @app.route('/diagnose', methods=['GET'])
 def diagnose_get():
     return jsonify({"message": "Diagnose endpoint is working. Use POST method with answers data.", "status": "ready"})
+
+def analyze_with_gemini(diagnosis_data, user_assessment):
+    """Use Gemini AI to provide intelligent analysis of diagnosis results"""
+    if not GEMINI_AVAILABLE:
+        return {"error": "Gemini AI not available", "analysis": "AI analysis unavailable"}
+    
+    try:
+        # Format the data for Gemini analysis
+        prompt = f"""You are a health analysis expert. Analyze the following health assessment and ML diagnosis results to provide personalized insights.
+        Note that this information is from machine learning models and should not be full medical advice.
+        Do acknowledge that this information is from the Canadian Community Health Survey (CCHS)
+        Take this information, and keep it in mind. We provided a quick diagnostic, and this is what we found:
+        Keep in mind that you are going to be like akinator and ask questions to narrow down the possibilities, and find out what the user is going to be of risk of, and a percentage 
+
+USER PROFILE:
+- Age: {user_assessment.get('age', 'Not specified')}
+- Gender: {user_assessment.get('gender', 'Not specified')}
+- Height: {user_assessment.get('height', 'Not specified')}
+- Weight: {user_assessment.get('weight', 'Not specified')}
+- Health Concerns: {user_assessment.get('concerns', 'None specified')}
+- Ethnicity: {user_assessment.get('ethnicity', 'Not specified')}
+
+LIFESTYLE FACTORS:
+- Smoking Status: {user_assessment.get('question4', 'Not specified')}
+- Alcohol Consumption: {user_assessment.get('question5', 'Not specified')}
+- Exercise Level: {user_assessment.get('question6', 'Not specified')}
+- Sleep Pattern: {user_assessment.get('question3', 'Not specified')}
+- Overall Health Self-Rating: {user_assessment.get('question10', 'Not specified')}
+
+FAMILY HISTORY:
+- Heart Disease: {user_assessment.get('question7', 'Not specified')}
+- Diabetes: {user_assessment.get('question8', 'Not specified')}
+
+CURRENT HEALTH STATUS:
+- Blood Pressure: {user_assessment.get('question9', 'Not specified')}
+
+ML MODEL PREDICTIONS:
+{json.dumps(diagnosis_data, indent=2)}
+
+You are going to take in this information, and return a quick summary about the user. You will be called later to ask questions to narrow down the possibilities, and find out what the user is going to be of risk of, and a percentage.
+You wont stop until they trigger stop, and just keep asking questions until you are certain, and then move onto the next condition.
+"""
+
+        response = gemini_model.generate_content(prompt)
+        
+        return {
+            "analysis": response.text,
+            "status": "success",
+            "model": "gemini-1.5-flash",
+            "timestamp": pd.Timestamp.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Gemini analysis error: {e}")
+        return {
+            "error": f"Analysis failed: {str(e)}",
+            "analysis": "Unable to provide AI analysis at this time",
+            "status": "error"
+        }
 
 @app.route('/diagnose', methods=['POST'])
 def diagnose():
@@ -166,14 +242,19 @@ def diagnose():
                 # Get predictions for all available chronic conditions
                 all_predictions = get_all_condition_predictions(user_assessment)
                 
-                # Format the response with actual ML predictions
+                # Get Gemini AI analysis of the diagnosis
+                gemini_analysis = analyze_with_gemini(all_predictions, user_assessment)
+                
+                # Format the response with actual ML predictions and AI analysis
                 response = {
                     "message": "Multi-condition diagnostic analysis complete",
                     "predictions": all_predictions,
+                    "ai_analysis": gemini_analysis,
                     "user_assessment": user_assessment,
                     "total_conditions_analyzed": len(all_predictions),
                     "analysis_timestamp": pd.Timestamp.now().isoformat(),
-                    "model_version": "joblib_production_v2"
+                    "model_version": "joblib_production_v2",
+                    "ai_enabled": GEMINI_AVAILABLE
                 }
                 
                 return jsonify(response)
@@ -189,20 +270,47 @@ def diagnose():
         
         else:
             # Fallback mock response when ML model is not available
+            mock_predictions = {
+                "cardiovascular_risk": "moderate",
+                "diabetes_risk": "low", 
+                "mental_health_risk": "moderate"
+            }
+            
+            # Create mock user assessment for Gemini
+            mock_user_assessment = {
+                'age': user_answers.get('age', 40),
+                'gender': user_answers.get('gender', 'Male'),
+                'height': user_answers.get('height', ''),
+                'weight': user_answers.get('weight', 0),
+                'concerns': user_answers.get('concerns', ''),
+                'ethnicity': user_answers.get('ethnicity', ''),
+                'question1': user_answers.get('question1', ''),
+                'question2': user_answers.get('question2', ''),
+                'question3': user_answers.get('question3', ''),
+                'question4': user_answers.get('question4', ''),
+                'question5': user_answers.get('question5', ''),
+                'question6': user_answers.get('question6', ''),
+                'question7': user_answers.get('question7', ''),
+                'question8': user_answers.get('question8', ''),
+                'question9': user_answers.get('question9', ''),
+                'question10': user_answers.get('question10', '')
+            }
+            
+            # Get Gemini analysis even with mock data
+            gemini_analysis = analyze_with_gemini(mock_predictions, mock_user_assessment)
+            
             mock_response = {
                 "message": "Diagnostic analysis complete (using mock data - ML model not available)",
-                "risk_factors": {
-                    "cardiovascular_risk": "moderate",
-                    "diabetes_risk": "low", 
-                    "mental_health_risk": "moderate"
-                },
+                "risk_factors": mock_predictions,
+                "ai_analysis": gemini_analysis,
                 "recommendations": [
                     "Consider increasing physical activity",
                     "Monitor stress levels",
                     "Regular health checkups recommended"
                 ],
                 "processed_inputs": ml_inputs,
-                "model_version": "mock"
+                "model_version": "mock",
+                "ai_enabled": GEMINI_AVAILABLE
             }
             
             return jsonify(mock_response)
