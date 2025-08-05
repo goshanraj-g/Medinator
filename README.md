@@ -97,14 +97,14 @@ npm run dev
 
 ---
 
-## 🧪 Screenshots
-
+## 🏠 Home Screen Preview
 <p align="center">
-  <img src="frontend/public/screenshot-quiz.png" alt="Quiz Screen" width="600"/>
+  <img src="frontend/public/original.png" alt="Home Screen" width="600"/>
 </p>
 
+## 🧮 Results Demo
 <p align="center">
-  <img src="frontend/public/screenshot-result.png" alt="Result Screen" width="600"/>
+  <img src="frontend/public/results.png" alt="Result Screen" width="600"/>
 </p>
 
 ---
