@@ -1,14 +1,15 @@
 # 🧠 Medinator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
-[![Next.js](https://img.shields.io/badge/Frontend-Next.js-000000.svg?logo=nextdotjs)](https://nextjs.org/)  
-[![Flask](https://img.shields.io/badge/Backend-Flask-000000.svg?logo=flask)](https://flask.palletsprojects.com/)  
-[![Tailwind CSS](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC.svg)](https://tailwindcss.com/)  
-[![Python](https://img.shields.io/badge/ML-Python-3776AB.svg?logo=python)](https://www.python.org/)  
-[![Gemini](https://img.shields.io/badge/AI-Gemini-4285F4.svg?logo=google)](https://deepmind.google/technologies/gemini)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Next.js v14](https://img.shields.io/badge/Next.js-%20v14-000000.svg?logo=nextdotjs)](https://nextjs.org/)
+[![Flask v3.0](https://img.shields.io/badge/Flask-%20v3.0-000000.svg?logo=flask)](https://flask.palletsprojects.com/)
+[![Tailwind CSS v3.4](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC.svg)](https://tailwindcss.com/)
+[![scikit-learn v1.5](https://img.shields.io/badge/ML-scikit--learn%20v1.5-F7931E.svg?logo=scikit-learn)](https://scikit-learn.org/)
+[![Gemini API](https://img.shields.io/badge/AI-Gemini%20-4285F4.svg?logo=google)](https://deepmind.google/technologies/gemini)
+
 
 <p align="center">
-  <img src="frontend/public/logo.png" alt="Medinator Logo" width="140"/>
+  <img src="frontend/public/medinator.png" alt="Medinator Logo" width="70"/>
 </p>
 
 ---
@@ -17,7 +18,7 @@
 
 **Medinator** is a conversational web app that helps users reflect on their lifestyle and uncover potential long-term health risks.
 
-Inspired by apps like *Akinator*, Medinator adapts its questions based on your responses to flag risk factors for chronic conditions such as hypertension, diabetes, and depression — using real-world data and AI.
+Inspired by apps like *Akinator*, Medinator adapts its questions based on your responses to flag risk factors for chronic conditions such as hypertension, diabetes, and depression using real-world data and AI.
 
 > ⚠️ **Note:** Your data is **never stored**, everything runs **locally** in the browser for your privacy and peace of mind.
 
